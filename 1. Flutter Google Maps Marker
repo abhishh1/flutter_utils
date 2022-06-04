@@ -1,0 +1,106 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:sizer/sizer.dart';
+
+class GoogleMapsMarkerNotifier extends ChangeNotifier {
+  final List<Marker> _markers = [];
+
+  bool isSoloMarker = false;
+
+  addNewMarker({required LatLng latLng}) {
+    if (isSoloMarker) {
+      _markers.clear();
+      Marker marker = Marker(
+          position: LatLng(latLng.latitude, latLng.longitude),
+          markerId: MarkerId(latLng.toString()));
+      _markers.add(marker);
+      notifyListeners();
+    } else {
+      Marker marker = Marker(
+          position: LatLng(latLng.latitude, latLng.longitude),
+          markerId: MarkerId(latLng.toString()));
+      _markers.add(marker);
+      notifyListeners();
+    }
+  }
+
+  setSoloMarker() {
+    isSoloMarker = !isSoloMarker;
+    notifyListeners();
+  }
+
+  clearMarkers() {
+    _markers.clear();
+    notifyListeners();
+  }
+}
+
+class GoogleMapsMarkerExample extends StatelessWidget {
+  const GoogleMapsMarkerExample({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    Completer<GoogleMapController> _controller = Completer();
+
+    GoogleMapsMarkerNotifier googleMapsMarkerNotifier(
+            {required bool renderUI}) =>
+        Provider.of<GoogleMapsMarkerNotifier>(context, listen: renderUI);
+
+    return Sizer(builder: ((context, orientation, deviceType) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: SizedBox(
+            child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              CustomRoundedButton(
+                  onTap: () {
+                    googleMapsMarkerNotifier(renderUI: false).setSoloMarker();
+                  },
+                  backgroundColor:
+                      googleMapsMarkerNotifier(renderUI: true).isSoloMarker
+                          ? Colors.deepOrangeAccent
+                          : KConstantColors.blueColor,
+                  label: googleMapsMarkerNotifier(renderUI: true).isSoloMarker
+                      ? "Single mode"
+                      : "Multiple mode",
+                  height: 5,
+                  width: 40),
+              vSizedBox1,
+              if (googleMapsMarkerNotifier(renderUI: true)._markers.isNotEmpty)
+                CustomRoundedButton(
+                    onTap: () {
+                      googleMapsMarkerNotifier(renderUI: false).clearMarkers();
+                    },
+                    backgroundColor: KConstantColors.bgColorFaint,
+                    label: "Clear markers",
+                    height: 5,
+                    width: 40),
+            ]),
+          ),
+          appBar: AppBar(
+              backgroundColor: KConstantColors.bgColorFaint,
+              title: Text("Google maps markers",
+                  style: KCustomTextStyle.kBold(context, 14))),
+          backgroundColor: KConstantColors.bgColor,
+          body: GoogleMap(
+              mapType: MapType.hybrid,
+              onTap: (latln) {
+                googleMapsMarkerNotifier(renderUI: false)
+                    .addNewMarker(latLng: latln);
+              },
+              markers: Set<Marker>.from(
+                  googleMapsMarkerNotifier(renderUI: true)._markers.toList()),
+              onMapCreated: (GoogleMapController controller) {
+                _controller.complete(controller);
+              },
+              initialCameraPosition: const CameraPosition(
+                  zoom: 16, target: LatLng(28.7041, 77.1025))),
+        ),
+      );
+    }));
+  }
+}
